@@ -3,9 +3,8 @@ import os
 import numpy as np
 import sys
 import cv2 as cv
-def show_wait_destroy(winname, img):
+def show_wait_destroy(winname, img): #display image
     cv.imshow(winname, img)
-    # cv.moveWindow(winname, 500, 0)
     cv.waitKey(0)
     cv.destroyWindow(winname)
 
@@ -17,22 +16,11 @@ def read_img(img):
     h, w = src.shape[:2]
     new_w = 500
     new_h = int(new_w * w / h)
-    return cv.resize(src, (new_h, new_w))
+    return cv.resize(src, (new_h, new_w)) #resize image to 500 px wide
 
 def preprocess(src, invert):
     norm = np.zeros((src.shape[0], src.shape[1]))
     img = cv.normalize(src, norm, 0, 255, cv.NORM_MINMAX)
-
-    # coords = np.column_stack(np.where(img > 0))
-    # angle = cv.minAreaRect(coords)[-1]
-    # if angle < -45:
-    #     angle = -(90 + angle)
-    # else:
-    #     angle = -angle
-    #     (h, w) = img.shape[:2]
-    # center = (w //2, h //2)
-    # M = cv.getRotationMatrix2D(center, angle, 1.0)
-    # rotated = cv.warpAffine(img, M, (w, h), flags=cv.INTER_CUBIC, borderMode=cv.BORDER_REPLICATE)
     denoised = cv.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 15)
     buf = cv.addWeighted(denoised, 1.2, denoised, 0, 1.2) 
     gray = cv.cvtColor(buf, cv.COLOR_BGR2GRAY)
@@ -41,11 +29,10 @@ def preprocess(src, invert):
     return gray
 
 def find_square(gray):
-    
     edges = cv.Canny(gray, 200, 200)
     cnts = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) #draw outline
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-    area_treshold = 5000
+    # area_treshold = 5000
 
     blank = np.zeros(gray.shape, dtype=np.uint8)
     # blank = cv.cvtColor(blank, cv.COLOR_BGR2GRAY)
@@ -68,7 +55,6 @@ def find_square(gray):
     # show_wait_destroy("cropped", cropped)
     cropped = cv.drawContours(blank,cnts,-1,(255,255,255),1)
 
-
     filtered = cv.bitwise_and(~gray, ~gray,mask = cropped)
     # border = cv.findContours(blank, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
     # filtered = cv.drawContours(filtered, border[0], -1, (255, 255, 255), 5)
@@ -76,10 +62,7 @@ def find_square(gray):
     return filtered
 
 def find_horiz(filtered):
-    #find black horizontal lines
     bw = cv.adaptiveThreshold(filtered, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 15, -2)
-    # show_wait_destroy("gray", bw)
-    
     horizontal = np.copy(bw)
     cols = horizontal.shape[1]
     horizontal_size = cols // 20
@@ -119,7 +102,6 @@ def getAxis(theta):
         return 0
     if math.isclose(theta, 0, rel_tol=0.5):
         return 1
-    # return 1
 
 def draw_lines(lines, draw):
     horiz = []
@@ -138,20 +120,15 @@ def draw_lines(lines, draw):
         y2 = int(y0 - 1000*(a))
 
         axis = getAxis(theta)
-        # cv.line(draw, (x1, y1), (x2, y2), (255, 105, 180), 2)
-        # drawLine = True
         if axis == 0: #horiz lines save y value
             drawLine = True
             for i in horiz:
                 if math.isclose(y0, i, rel_tol = 0.6):
-                    # print("y0: ", y0)
-                    # print("i: ", i)
                     drawLine = False
                     break
             if drawLine:
                 horiz.append(y0)
                 cv.line(draw, (x1, y1), (x2, y2), (255, 200, 180), 2)      
-        # drawLine = True
         if axis == 1: #vert lines save x value
             drawLine = True
             for i in vert:
@@ -163,8 +140,6 @@ def draw_lines(lines, draw):
             if drawLine:
                 vert.append(x0)
                 cv.line(draw, (x1, y1), (x2, y2), (255, 105, 180), 2)
-    print(vert)
-    print(horiz)
         
 def find_lines(src, file_name):
     draw = np.copy(src)
@@ -209,8 +184,6 @@ def find_lines(src, file_name):
 def main(argv):
     #read file
     src = read_img(argv[0])
-    # show_wait_destroy("original", src)
-    # if ratio btwn width height off, then return error
 
     final = find_lines(src, argv[0])
     show_wait_destroy(argv[0] + ": detected lines", final)
