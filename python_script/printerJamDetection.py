@@ -118,7 +118,7 @@ def draw_lines(lines, draw):
     if len(vert) > 1:
         print("vert error detected")
         
-def find_lines(src, file_name):
+def find_lines(src):
     draw = np.copy(src)
     gray = preprocess(draw, False)
 
@@ -146,13 +146,13 @@ def main(argv):
     #read file
     src = read_img(argv[0])
 
-    final = find_lines(src, argv[0])
+    final = find_lines(src)
     show_wait_destroy(argv[0] + ": detected lines", final)
     return 0
 # if __name__ == "__main__":
 #     main(sys.argv[1:])
 
-main(["test8.jpg"])
+main(["test9.jpg"])
 main(["test3.jpg"])
 main(["jam1.jpg"])
 main(["norm1.jpg"])
