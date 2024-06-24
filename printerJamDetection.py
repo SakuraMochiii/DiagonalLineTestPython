@@ -11,7 +11,7 @@ def show_wait_destroy(winname, img):
 
 def read_img(img):
     directory_path = os.path.dirname(__file__)
-    file_path = os.path.join(directory_path, img) #img path
+    file_path = os.path.join(directory_path, "assets/" + img) #img path
     src = cv.imread(file_path, cv.IMREAD_COLOR)
 
     h, w = src.shape[:2]
@@ -213,17 +213,17 @@ def main(argv):
     # if ratio btwn width height off, then return error
 
     final = find_lines(src, argv[0])
-    show_wait_destroy("detected lines", final)
+    show_wait_destroy(argv[0] + ": detected lines", final)
     return 0
 # if __name__ == "__main__":
 #     main(sys.argv[1:])
 
-main(["assets/test3.jpg"])
-main(["assets/jam1.jpg"])
-main(["assets/norm1.jpg"])
-main(["assets/test1.jpg"])
-main(["assets/test4.jpg"])
-main(["assets/1ptvert.jpg"])
-main(["assets/1pthoriz.jpg"])
-main(["assets/1ptboth.jpg"])
-main(["assets/test6.jpg"])
+main(["test3.jpg"])
+main(["jam1.jpg"])
+main(["norm1.jpg"])
+main(["test1.jpg"])
+main(["test4.jpg"])
+main(["1ptvert.jpg"])
+main(["1pthoriz.jpg"])
+main(["1ptboth.jpg"])
+main(["test6.jpg"])
