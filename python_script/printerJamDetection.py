@@ -32,33 +32,9 @@ def find_square(gray):
     edges = cv.Canny(gray, 200, 200)
     cnts = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) #draw outline
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-    # area_treshold = 5000
-
     blank = np.zeros(gray.shape, dtype=np.uint8)
-    # blank = cv.cvtColor(blank, cv.COLOR_BGR2GRAY)
-    cropped = blank.copy()
-    # for c in cnts:
-        # if cv.contourArea(c) > area_treshold:
-            # epsilon = 0.05*cv.arcLength(c,True)
-            # c2 = cv.approxPolyDP(c,epsilon,True)
-        #     if len(c2) == 4:
-        #         cropped = cv.drawContours(blank, [c2], -1, (255, 255, 255), cv.FILLED)
-        #     else:
-        #         rect = cv.minAreaRect(c)
-        #         box = cv.boxPoints(rect)
-        #         box = np.intp(box)
-        #         cropped = cv.drawContours(blank,[box],-1,(255,255,255),cv.FILLED)
-        # rect = cv.minAreaRect(c)
-        # box = cv.boxPoints(rect)
-        # box = np.intp(box)
-        # cropped = cv.drawContours(blank,[c],-1,(255,255,255),1)
-    # show_wait_destroy("cropped", cropped)
     cropped = cv.drawContours(blank,cnts,-1,(255,255,255),1)
-
     filtered = cv.bitwise_and(~gray, ~gray,mask = cropped)
-    # border = cv.findContours(blank, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
-    # filtered = cv.drawContours(filtered, border[0], -1, (255, 255, 255), 5)
-    # cv.imwrite("filtered.jpg", ~filtered)
     return filtered
 
 def find_horiz(filtered):
@@ -78,7 +54,7 @@ def find_vert(filtered):
     # find vertical
     vertical = np.copy(~bw)
     rows = vertical.shape[0]
-    verticalsize = rows // 20
+    verticalsize = rows // 30
     verticalStructure = cv.getStructuringElement(cv.MORPH_RECT, (1, verticalsize))
     vertical = cv.erode(vertical, verticalStructure)
     vertical = cv.dilate(vertical, verticalStructure)
@@ -97,7 +73,6 @@ def find_vert(filtered):
     return lines
 
 def getAxis(theta):
-    print("theta: ", theta)
     if math.isclose(theta, 1.5, rel_tol=0.2):
         return 0
     if math.isclose(theta, 0, rel_tol=0.5):
@@ -133,13 +108,15 @@ def draw_lines(lines, draw):
             drawLine = True
             for i in vert:
                 if math.isclose(x0, i, rel_tol = 0.2):
-                    print("y0: ", x0)
-                    print("i: ", i)
                     drawLine = False
                     break
             if drawLine:
                 vert.append(x0)
                 cv.line(draw, (x1, y1), (x2, y2), (255, 105, 180), 2)
+    if len(horiz) > 2:
+        print("horizontal error detected")
+    if len(vert) > 1:
+        print("vert error detected")
         
 def find_lines(src, file_name):
     draw = np.copy(src)
@@ -149,16 +126,9 @@ def find_lines(src, file_name):
 
     hlines = find_horiz(gray)
     vlines = find_vert(buf)
-    total = 0
-    if hlines is None:
-        print(file_name + ": no horizontal overlap errors detected")
-        total += 1
-    else:
+    if hlines is not None:
         draw_lines(hlines, draw)
-    if vlines is None:
-        print(file_name + ": no vertical overlap errors detected")
-        total += 1
-    else:
+    if vlines is not None:
         draw_lines(vlines, draw)
 
     filteredi = preprocess(draw, True)
@@ -166,19 +136,10 @@ def find_lines(src, file_name):
 
     hilines = find_horiz(filteredi)
     vilines = find_vert(bufi)
-    if hilines is None:
-        print(file_name + ": no horizontal blank errors detected")
-        total += 1
-    else:
+    if hilines is not None:
         draw_lines(hilines, draw)
-    if vilines is None:
-        print(file_name + ": no vertical blank errors detected")
-        total += 1
-    else:
+    if vilines is not None:
         draw_lines(vilines, draw)
-    if total == 4:
-        print("no errors")
-        return 0
     return draw
 
 def main(argv):
@@ -191,6 +152,7 @@ def main(argv):
 # if __name__ == "__main__":
 #     main(sys.argv[1:])
 
+main(["test8.jpg"])
 main(["test3.jpg"])
 main(["jam1.jpg"])
 main(["norm1.jpg"])
