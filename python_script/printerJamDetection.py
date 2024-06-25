@@ -22,7 +22,7 @@ def preprocess(src):
     norm = np.zeros((src.shape[0], src.shape[1]))
     img = cv.normalize(src, norm, 0, 255, cv.NORM_MINMAX)
     denoised = cv.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 15)
-    buf = cv.addWeighted(denoised, 1.2, denoised, 0, 0.5) 
+    buf = cv.addWeighted(denoised, 1.2, denoised, 0, 1.2)
     gray = cv.cvtColor(buf, cv.COLOR_BGR2GRAY)
     return ~gray
 
@@ -97,7 +97,7 @@ def find_vert(filtered):
 def getAxis(theta):
     if math.isclose(theta, 1.5, rel_tol=0.1):
         return 0
-    if math.isclose(theta, 0, rel_tol=0.5):
+    if math.isclose(theta, 0, rel_tol=0.2):
         return 1
 
 def draw_lines(lines, draw):
@@ -146,19 +146,19 @@ def draw_lines(lines, draw):
             #     if not math.isclose(x0, i[0], rel_tol=0.2):
             #         vert.append([y0, x1, y1, x2, y2])
     # horiz.sort(key=lambda x: x[0])
+    print(vert)
     vert.sort(key=lambda x: x[0])
     prevh = 0
     if len(vert) > 0:
         prevh = vert[0][0]
     new_vert = []
-    for i in vert[1:]:
+    for i in vert:
         if i[0] - prevh > 6:
             new_vert.append(i)
-
+    
     # prevh = horiz[0][0]
 
     # vert = vert[1:-1]
-    print(vert)
     for i in horiz:
         cv.line(draw, (i[1], i[2]), (i[3], i[4]), (255, 200, 180), 2)
     for i in new_vert[:-1]:
@@ -195,3 +195,4 @@ def main(argv):
 main(["diagvert-30-photo.png"])
 main(["diag30-both.png"])
 main(["diaglines-multiplevert-photo.png"])
+main(["diaglines-both.png"])
