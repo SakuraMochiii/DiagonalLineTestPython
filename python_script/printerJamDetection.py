@@ -18,23 +18,45 @@ def read_img(img):
     new_h = int(new_w * w / h)
     return cv.resize(src, (new_h, new_w)) #resize image to 500 px wide
 
-def preprocess(src, invert):
+def preprocess(src):
     norm = np.zeros((src.shape[0], src.shape[1]))
     img = cv.normalize(src, norm, 0, 255, cv.NORM_MINMAX)
     denoised = cv.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 15)
-    buf = cv.addWeighted(denoised, 1.2, denoised, 0, 1.2) 
+    buf = cv.addWeighted(denoised, 1.2, denoised, 0, 0.5) 
     gray = cv.cvtColor(buf, cv.COLOR_BGR2GRAY)
-    if not invert: #if line is black
-        gray = cv.bitwise_not(gray)
-    return gray
+    return ~gray
 
 def find_square(gray):
     edges = cv.Canny(gray, 200, 200)
     cnts = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) #draw outline
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     blank = np.zeros(gray.shape, dtype=np.uint8)
-    cropped = cv.drawContours(blank,cnts,-1,(255,255,255),1)
+    # area_threshold = 500
+
+    # for c in cnts:
+    #     if cv.contourArea(c) > area_threshold:
+    #         epsilon = 0.05*cv.arcLength(c,True)
+    #         c2 = cv.approxPolyDP(c,epsilon,True)
+    #         if len(c2) == 4:
+    #             cropped = cv.drawContours(blank, [c2], -1, (255, 255, 255), cv.FILLED)
+    #         else:
+    #             rect = cv.minAreaRect(c)
+    #             box = cv.boxPoints(rect)
+    #             box = np.intp(box)
+    #             cropped = cv.drawContours(blank,[box],-1,(255,255,255),cv.FILLED)
+    boxes = []
+    for c in cnts:
+        (x, y, w, h) = cv.boundingRect(c)
+        boxes.append([x,y, x+w,y+h])
+
+    boxes = np.asarray(boxes)
+    left, top = np.min(boxes, axis=0)[:2]
+    right, bottom = np.max(boxes, axis=0)[2:]
+
+    cropped = cv.rectangle(blank, (left,top), (right,bottom), (255, 255, 255), cv.FILLED)
+    # cropped = cv.drawContours(blank,[box],-1,(255,255,255),cv.FILLED)
     filtered = cv.bitwise_and(~gray, ~gray,mask = cropped)
+    show_wait_destroy("cropped", filtered)
     return filtered
 
 def find_horiz(filtered):
@@ -52,7 +74,7 @@ def find_horiz(filtered):
 def find_vert(filtered):
     bw = cv.adaptiveThreshold(filtered, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 15, -2)
     # find vertical
-    vertical = np.copy(~bw)
+    vertical = np.copy(bw)
     rows = vertical.shape[0]
     verticalsize = rows // 30
     verticalStructure = cv.getStructuringElement(cv.MORPH_RECT, (1, verticalsize))
@@ -73,12 +95,14 @@ def find_vert(filtered):
     return lines
 
 def getAxis(theta):
-    if math.isclose(theta, 1.5, rel_tol=0.2):
+    if math.isclose(theta, 1.5, rel_tol=0.1):
         return 0
     if math.isclose(theta, 0, rel_tol=0.5):
         return 1
 
 def draw_lines(lines, draw):
+    if lines is None:
+        return [0, 0]
     horiz = []
     vert = []
 
@@ -98,48 +122,64 @@ def draw_lines(lines, draw):
         if axis == 0: #horiz lines save y value
             drawLine = True
             for i in horiz:
-                if math.isclose(y0, i, rel_tol = 0.6):
+                if math.isclose(y0, i[0], rel_tol = 0.6):
                     drawLine = False
                     break
             if drawLine:
-                horiz.append(y0)
-                cv.line(draw, (x1, y1), (x2, y2), (255, 200, 180), 2)      
+                horiz.append([y0, x1, y1, x2, y2])
+                # horiz.append(y0)
+                # cv.line(draw, (x1, y1), (x2, y2), (255, 200, 180), 2)      
+            # for i in horiz:
+            #     if not math.isclose(y0, i[0], rel_tol=0.6):
+            #         horiz.append([y0, x1, y1, x2, y2])
         if axis == 1: #vert lines save x value
             drawLine = True
             for i in vert:
-                if math.isclose(x0, i, rel_tol = 0.2):
+                if math.isclose(x0, i[0], rel_tol = 0.1):
                     drawLine = False
                     break
             if drawLine:
-                vert.append(x0)
-                cv.line(draw, (x1, y1), (x2, y2), (255, 105, 180), 2)
-    if len(horiz) > 2:
-        print("horizontal error detected")
-    if len(vert) > 1:
-        print("vert error detected")
+                vert.append([x0, x1, y1, x2, y2])
+                # vert.append(x0)
+                # cv.line(draw, (x1, y1), (x2, y2), (255, 105, 180), 2)
+            # for i in vert:
+            #     if not math.isclose(x0, i[0], rel_tol=0.2):
+            #         vert.append([y0, x1, y1, x2, y2])
+    # horiz.sort(key=lambda x: x[0])
+    vert.sort(key=lambda x: x[0])
+    prevh = 0
+    if len(vert) > 0:
+        prevh = vert[0][0]
+    new_vert = []
+    for i in vert[1:]:
+        if i[0] - prevh > 6:
+            new_vert.append(i)
+
+    # prevh = horiz[0][0]
+
+    # vert = vert[1:-1]
+    print(vert)
+    for i in horiz:
+        cv.line(draw, (i[1], i[2]), (i[3], i[4]), (255, 200, 180), 2)
+    for i in new_vert[:-1]:
+        cv.line(draw, (i[1], i[2]), (i[3], i[4]), (255, 105, 180), 2)
+    return [len(horiz), len(vert)]
         
 def find_lines(src):
     draw = np.copy(src)
-    gray = preprocess(draw, False)
+    gray = preprocess(draw)
 
-    buf = find_square(gray) #find black lines
+    buf = find_square(gray)
 
     hlines = find_horiz(gray)
     vlines = find_vert(buf)
-    if hlines is not None:
-        draw_lines(hlines, draw)
-    if vlines is not None:
-        draw_lines(vlines, draw)
-
-    filteredi = preprocess(draw, True)
-    bufi = find_square(filteredi) #find white lines
-
-    hilines = find_horiz(filteredi)
-    vilines = find_vert(bufi)
-    if hilines is not None:
-        draw_lines(hilines, draw)
-    if vilines is not None:
-        draw_lines(vilines, draw)
+    h = draw_lines(hlines, draw)
+    v = draw_lines(vlines, draw)
+    
+    if h[0] + v[0] > 0:
+        print("horizontal error detected")
+    if h[1] + v[1] > 2:
+        print("vertical error detected")
     return draw
 
 def main(argv):
@@ -152,13 +192,6 @@ def main(argv):
 # if __name__ == "__main__":
 #     main(sys.argv[1:])
 
-main(["test9.jpg"])
-main(["test3.jpg"])
-main(["jam1.jpg"])
-main(["norm1.jpg"])
-main(["test1.jpg"])
-main(["test4.jpg"])
-main(["1ptvert.jpg"])
-main(["1pthoriz.jpg"])
-main(["1ptboth.jpg"])
-main(["test6.jpg"])
+main(["diagvert-30-photo.png"])
+main(["diag30-both.png"])
+main(["diaglines-multiplevert-photo.png"])
