@@ -1,7 +1,6 @@
 import math
 import os
 import numpy as np
-import sys
 import cv2 as cv
 def show_wait_destroy(winname, img): #display image
     cv.imshow(winname, img)
