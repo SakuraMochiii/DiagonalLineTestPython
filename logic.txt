@@ -1,0 +1,30 @@
+Purpose: 
+detect errors in POS printing devices through searching for horizontal/vertical lines
+
+ - vertical line errors simulate 1 out of 384 dots failing to print, thus forming a white vertical line
+ - horzontal line errors simulate printer paper jamming, so the diagonal lines print in the same place to form a horizontal line
+
+Code Logic:
+ - findsquare: search for rectangular area formed by diagonal lines
+    - draw all contours, find the minimum/maximum x and y values to draw a bounding rectangle
+    - key functions: 
+        - adaptiveThreshold: https://docs.opencv.org/4.x/d7/d4d/tutorial_py_thresholding.html
+            - filters image to only keep black and white values
+        - getStructuringElement, erode, dilate: https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
+            - returns a kernel array with 1s for the desired shape (in this case rectangluar)
+            - helps reduce noise
+        - Canny: https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html
+            - detects edges
+        - HoughLines: https://docs.opencv.org/3.4/d9/db0/tutorial_hough_lines.html
+            - detect straight lines
+
+ - getAxis: only keep lines based on their angle, return 0 for horizontal and 1 for vertical
+ - drawLines: append lines to horiz and vert arrays to further filter the lines to ensure only important lines are drawLines
+ - findLines/main: call above helper functions
+
+Running the code:
+ - Python: run printerJamDetection.py, call main with the name of the image file you would like to test (ex. main(["diagvert-30-photo.png"]))
+           Input files should be photos of printed receipts with potential errors
+ - Android: to print a sample picture, run MainActivity and click the open printer button, followed by printImg. 
+            Select which image to print by changing the file name in the printImg function in MainActivity.java to any file under assets.
+     - Work in progress: implement CameraMethods to use POS camera to take a photo, then display the photo before and after analyzing with OpenCV
